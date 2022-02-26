@@ -1,8 +1,11 @@
 package study.querydsl;
 
+import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
-import com.querydsl.core.types.Expression;
+import com.querydsl.core.types.Predicate;
+import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.JPAExpressions;
@@ -11,10 +14,13 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
+import study.querydsl.dto.MemberDto;
+import study.querydsl.dto.QMemberDto;
+import study.querydsl.dto.UserDto;
 import study.querydsl.entity.Member;
 import study.querydsl.entity.QMember;
-import study.querydsl.entity.QTeam;
 import study.querydsl.entity.Team;
 
 import javax.persistence.EntityManager;
@@ -446,8 +452,199 @@ public class QuerydslBasicTest {
         for (String s : result) {
             System.out.println("s ="+s);
         }
+    }
 
+    @Test
+    public void simpleProjection(){
+        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
+        List<String> result = queryFactory
+                .select(member.username)
+                .from(member)
+                .fetch();
 
+        for (String s : result) {
+            System.out.println("s =" +s);
+        }
+    }
+
+    @Test
+    public void tupleProjection(){
+        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
+        List<Tuple> result = queryFactory
+                .select(member.username, member.age)
+                .from(member)
+                .fetch();
+
+        for (Tuple tuple : result) {
+            String username = tuple.get(member.username);
+            Integer age = tuple.get(member.age);
+            System.out.println("username" + username);
+            System.out.println("age"+ age);
+        }
+    }
+
+    @Test
+    public void Dto찾기ByJPQL(){
+        List<MemberDto> resultList = em.createQuery("select new study.querydsl.dto.MemberDto(m.username,m.age)" +
+                        " from Member m", MemberDto.class)
+                .getResultList();
+
+        for (MemberDto memberDto : resultList) {
+            System.out.println("memberDto ="+memberDto);
+        }
+    }
+
+    @Test
+    public void Dto찾기ByQueryDsl첫번째방법(){
+        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
+        List<MemberDto> result = queryFactory
+                .select(Projections.bean(MemberDto.class, member.username, member.age))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto ="+memberDto);
+        }
+    }
+
+    @Test
+    public void Dto찾기ByQueryDsl두번째방법(){
+        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
+        List<MemberDto> result = queryFactory
+                .select(Projections.fields(MemberDto.class, member.username, member.age))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto ="+memberDto);
+        }
+    }
+
+    @Test
+    public void Dto찾기ByQueryDsl세번째방법(){
+        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
+        List<MemberDto> result = queryFactory
+                .select(Projections.constructor(MemberDto.class, member.username, member.age))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto ="+memberDto);
+        }
+    }
+
+    @Test
+    public void Dto필드명과엔티티필드명이다를때(){
+        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
+        List<UserDto> result = queryFactory
+                .select(Projections.fields(UserDto.class,
+                        member.username.as("name"),
+                        member.age))
+                .from(member)
+                .fetch();
+
+        for (UserDto UserDto : result) {
+            System.out.println("UserDto ="+UserDto);
+        }
+    }
+
+    @Test
+    public void findDtoByQueryProjection(){
+        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
+        List<MemberDto> result = queryFactory
+                .select(new QMemberDto(member.username, member.age))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            System.out.println(memberDto);
+        }
+    }
+
+    @Test //검색 만들때 괜찮을 듯
+    public void 동적쿼리_BooleanBuilder(){
+        String usernameParam = "member1";
+//        Integer ageParam = 10;
+        Integer ageParam = null;
+
+        List<Member> result = searchMember1(usernameParam, ageParam);
+
+        Assertions.assertThat(result.size()).isEqualTo(1);
+    }
+
+    private List<Member> searchMember1(String usernameParam, Integer ageParam) {
+        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
+
+        BooleanBuilder builder = new BooleanBuilder();
+        if(usernameParam != null){
+            builder.and(member.username.eq(usernameParam));
+        }
+
+        if(ageParam != null){
+            builder.and(member.age.eq(ageParam));
+        }
+
+        return queryFactory
+                .selectFrom(member)
+                .where(builder)
+                .fetch();
+    }
+
+    @Test
+    public void 동적쿼리_WhereParam(){
+        String usernameParam = "member1";
+        Integer ageParam = 10;
+//        Integer ageParam = null;
+
+        List<Member> result = searchMember2(usernameParam, ageParam);
+
+        Assertions.assertThat(result.size()).isEqualTo(1);
+    }
+
+    private List<Member> searchMember2(String usernameParam, Integer ageParam) {
+        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
+
+        return queryFactory
+                .selectFrom(member)
+//                .where(usernameEq(usernameParam),ageEq(ageParam))
+                .where(allEq(usernameParam,ageParam)) //이렇게 한번에 할수도있다
+                .fetch();
+    }
+
+    private BooleanExpression ageEq(Integer ageParam) {
+        if(ageParam != null){
+            return  member.age.eq(ageParam);
+        }
+        else {
+            return null; //이렇게 where절에 null이 들어가면 조회하지않고 무시해버린다
+        }
+    }
+
+    private BooleanExpression usernameEq(String usernameParam) {
+        if(usernameParam != null){
+            return member.username.eq(usernameParam);
+        }
+        else {
+            return null;
+        }
+    }
+
+    private BooleanExpression allEq(String usernameParam, int ageParam){
+        return usernameEq(usernameParam).and(ageEq(ageParam));
+    }
+
+    @Test
+    @Rollback(value = false)
+    public void 벌크업데이트(){
+        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
+        long 비회원 = queryFactory
+                .update(member)
+                .set(member.username, "비회원") //조건을 만족하는 사람들의 이름을 비회원으로 바꿈
+                .where(member.age.lt(28))
+                .execute();//업데이트를 할때는 fetch가 아니라 excute를 쓴다
+
+        em.flush();
+        em.clear(); //벌크성 업데이트를 수행했으므로 이제 영속성 컨텍스트를 비워주는 거지 음음
     }
 
 }
