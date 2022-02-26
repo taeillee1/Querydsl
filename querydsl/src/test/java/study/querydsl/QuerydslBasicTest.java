@@ -27,7 +27,9 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceContext;
 import javax.persistence.PersistenceUnit;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import static study.querydsl.entity.QMember.member;
 import static study.querydsl.entity.QTeam.*;
@@ -634,7 +636,6 @@ public class QuerydslBasicTest {
     }
 
     @Test
-    @Rollback(value = false)
     public void 벌크업데이트(){
         JPAQueryFactory queryFactory = new JPAQueryFactory(em);
         long 비회원 = queryFactory
@@ -646,5 +647,35 @@ public class QuerydslBasicTest {
         em.flush();
         em.clear(); //벌크성 업데이트를 수행했으므로 이제 영속성 컨텍스트를 비워주는 거지 음음
     }
+
+    @Test
+    public void 벌크로더하기(){
+        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
+        queryFactory
+                .update(member)
+                .set(member.age, member.age.multiply(1))//더하기
+                .execute(); //빼고싶으면 숫자에 -1넣으면된닫
+    }
+    
+    @Test
+    public void 벌크삭제(){
+        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
+        queryFactory
+                .delete(member)
+                .where(member.age.gt(18))
+                .execute();
+
+        em.flush();
+        em.clear();
+
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .fetch();
+
+        for (Member member1 : result) {
+            System.out.println("member =" + member1);
+        }
+    }
+
 
 }
