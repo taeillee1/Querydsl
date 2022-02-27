@@ -30,3 +30,25 @@
 
 1. 조인의 기본 문법은 첫 번째 파라미터에 조인 대상을 지정하고 두 번째 파라미터에 별칭으로 사용할 Q타입을 지정하면 된다.
 	
+@QueryProjection
+
+내가 사용할 Dto 생성자에다가 붙이는 어노테이션으로
+이것을 붙인후 compileQuerydsl을 실행하면 dto도 Q타입으로 생성이 된다.
+
+queryFactory
+                .select(new QMemberDto(member.username, member.age))
+                .from(member)
+                .fetch();
+		
+이렇게 생성하여 사용할 수 있다.
+
+
+●QueryDsl을 이용하여 더하기 곱하기 하기
+
+queryFactory
+                .update(member)
+                .set(member.age, member.age.add(1)) //더하기
+			          member.age.multiply //곱하기
+                .execute(); 
+		
+//빼고싶으면 숫자에 -1넣으면된다
