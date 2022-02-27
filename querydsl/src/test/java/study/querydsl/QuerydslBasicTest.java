@@ -327,6 +327,8 @@ public class QuerydslBasicTest {
 
         boolean loaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam());
         Assertions.assertThat(loaded).as("패치 조인 적용").isTrue();
+
+        System.out.println(findMember.getTeam());
     }
 
     /**
