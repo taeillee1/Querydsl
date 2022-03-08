@@ -674,6 +674,10 @@ public class QuerydslBasicTest {
                 .selectFrom(member)
                 .fetch();
 
+//        List<Member> fetch = queryFactory
+//                .selectFrom(member)
+//                .fetch();
+
         for (Member member1 : result) {
             System.out.println("member =" + member1);
         }
